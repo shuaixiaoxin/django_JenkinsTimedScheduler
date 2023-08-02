@@ -1,0 +1,12 @@
+INSERT INTO `jenkins`.`t_menus` (`id`, `name`, `url`, `order`, `parent_id`) VALUES ('1', '系统统筹', 'null', '999', NULL);
+INSERT INTO `jenkins`.`t_menus` (`id`, `name`, `url`, `order`, `parent_id`) VALUES ('2', '用户管理', 'users', '0', '1');
+INSERT INTO `jenkins`.`t_menus` (`id`, `name`, `url`, `order`, `parent_id`) VALUES ('3', '菜单管理', 'menus', '0', '1');
+INSERT INTO `jenkins`.`t_menus` (`id`, `name`, `url`, `order`, `parent_id`) VALUES ('4', 'jenkins设置', 'null', '0', NULL);
+INSERT INTO `jenkins`.`t_menus` (`id`, `name`, `url`, `order`, `parent_id`) VALUES ('5', '网址列表', 'jenkins/jenkins-list', '0', '4');
+INSERT INTO `jenkins`.`t_menus` (`id`, `name`, `url`, `order`, `parent_id`) VALUES ('6', 'Token配置', 'jenkins/jenkins-token', '0', '4');
+INSERT INTO `jenkins`.`t_menus` (`id`, `name`, `url`, `order`, `parent_id`) VALUES ('7', '定时调度', 'null', '100', NULL);
+INSERT INTO `jenkins`.`t_menus` (`id`, `name`, `url`, `order`, `parent_id`) VALUES ('8', '单次定时', 'cron/cron-once', '0', '7');
+INSERT INTO `jenkins`.`t_menus` (`id`, `name`, `url`, `order`, `parent_id`) VALUES ('9', '循环定时', 'cron/cron-cycle', '0', '7');
+INSERT INTO `jenkins`.`t_menus` (`id`, `name`, `url`, `order`, `parent_id`) VALUES ('10', '任务一览', 'null', '200', NULL);
+INSERT INTO `jenkins`.`t_menus` (`id`, `name`, `url`, `order`, `parent_id`) VALUES ('11', '任务列表', 'task/task-list', '0', '10');
+INSERT INTO `jenkins`.`t_menus` (`id`, `name`, `url`, `order`, `parent_id`) VALUES ('12', '构建历史', 'task/history-list', '0', '10');

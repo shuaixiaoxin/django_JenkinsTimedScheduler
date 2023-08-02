@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    {% extends "base.html" %}
+    {% load static %}
+    <meta charset="utf-8">
+    <title>Token管理</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+</head>
+<body>
+    {% block content %}
+        <div class="layuimini-container">
+            <div class="layuimini-main">
+                <script type="text/html" id="toolbarDemo">
+                    <div class="layui-btn-container">
+                        <button class="layui-btn layui-btn-normal layui-btn-sm data-add-btn" lay-event="add"> 添加Token </button>
+                        <button class="layui-btn layui-btn-sm layui-btn-danger data-delete-btn" lay-event="delete"> 删除Token </button>
+                    </div>
+                </script>
+                <table class="layui-hide" id="currentTableId" lay-filter="currentTableFilter"></table>
+                <script type="text/html" id="currentTableBar">
+                    <a class="layui-btn layui-btn-normal layui-btn-xs data-count-edit" lay-event="availability">可用性检测</a>
+                </script>
+            </div>
+        </div>
+    {% endblock %}
+
+    {% block extra_js %}
+        <script src="{% static 'layuimini/lib/layui-v2.6.3/layui.js' %}" charset="utf-8"></script>
+        <script src="{% static 'layuimini/js/lay-config.js' %}?v=1.0.4" charset="utf-8"></script>
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+        <script src="{% static 'other/axios-plus.js' %}"></script>
+    {% endblock %}
+
+    {% block script %}
+        <script>
+            layui.use(['form', 'table'], function () {
+                var $ = layui.jquery,
+                    layer = layui.layer,
+                    table = layui.table;
+                table.render({
+                    elem: '#currentTableId',
+                    url: "jenkins-token-list",
+                    toolbar: '#toolbarDemo',
+                    id: 'tokenTable',
+                    text: {
+                        none: '未设置Token, 请先添加'
+                    },
+                    response: {
+                        statusName: 'code',
+                        statusCode: 200,
+                        msgName: 'message',
+                        dataName: 'data'
+                    },
+                    cols: [[
+                        {type: "checkbox", width: 50},
+                        {field: 'username', minwidth: 120, title: '用户名'},
+                        {field: 'token', minwidth: 100, title: 'Token值', edit: 'true'},
+                        {fixed: 'right', title: '操作', width:150, toolbar: '#currentTableBar'},
+                    ]],
+                });
+
+                table.on('toolbar(currentTableFilter)', function (obj) {
+                    if (obj.event === 'add') {
+                        var index = layer.open({
+                            title: '添加Token',
+                            type: 2,
+                            shade: 0.2,
+                            maxmin:true,
+                            shadeClose: true,
+                            area: ['70%', '70%'],
+                            content: 'jenkins-token-add',
+                        });
+                        $(window).on("resize", function () {
+                            layer.full(index);
+                        });
+                    } else if (obj.event === 'delete') {
+                        var checkStatus = table.checkStatus('tokenTable');
+                        if (checkStatus.data.length == 0) {
+                            layer.msg('请选中数据再执行删除', {time: 10000, btn: ['明白了', '知道了']});
+                        }else {
+                            for(var i in checkStatus.data){
+                                layer.confirm('真的要删除选中Token吗 ?', {icon: 3, title:'危险操作'}, function(index){
+                                const data = {'data': JSON.stringify(checkStatus.data)};
+                                axiosDel('jenkins/jenkins-token-destroy-api', data)
+                                    .then(recv => {
+                                        if (recv.code === 200) {
+                                            layer.msg(recv.message, {icon: 6});
+                                            table.reload('tokenTable');
+                                        } else {
+                                            layer.msg(recv.message, {icon: 5});
+                                        }
+                                     })
+                                    .catch(error => {
+                                      layer.msg(error, {icon: 5});
+                                    });
+                                layer.close(index);
+                              });
+                            }
+                        }
+                    }
+                });
+
+                table.on('edit(currentTableFilter)', function(obj){
+                  axiosPut('jenkins/jenkins-token-update-api', {"token": obj.value})
+                  .then(data => {
+                    if (data.code === 200) {
+                       layer.msg(data.message, {icon: 6});
+                    } else {
+                        layer.msg(data.message, {icon: 5});
+                    }
+                  })
+                  .catch(error => {
+                    console.error(error);
+                  });
+                });
+
+                table.on('tool(currentTableFilter)', function (obj) {
+                    if (obj.event === 'availability') {
+                        var loadingIndex = layer.load();
+                        axiosPost('jenkins/jenkins-token-availability-api', obj.data)
+                      .then(data => {
+                        if (data.code === 200) {
+                            layer.msg(data.message, {icon: 6});
+                        } else {
+                            layer.msg(data.message, {icon: 5});
+                        }
+                      })
+                      .catch(error => {
+                        console.error(error);
+                      })
+                       .finally(() => {
+                        layer.close(loadingIndex);
+                      });
+                    }
+                });
+            });
+        </script>
+    {% endblock %}
+</body>
+</html>

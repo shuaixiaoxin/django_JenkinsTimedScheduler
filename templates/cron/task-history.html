@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    {% extends "base.html" %}
+    {% load static %}
+    <meta charset="utf-8">
+    <title>任务历史</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+</head>
+<body>
+    {% block content %}
+        <div class="layuimini-container">
+            <div class="layuimini-main">
+                <fieldset class="table-search-fieldset">
+                    <legend>条件查询</legend>
+                    <div style="margin: 10px 10px 10px 10px">
+                        <form class="layui-form layui-form-pane" action="">
+                            <div class="layui-form-item">
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">任务类型</label>
+                                    <div class="layui-input-inline">
+                                        <select name="taskType" id="task-type" lay-filter="task-type" lay-search>
+                                          <option value="">请选择任务类型</option>
+                                          <option value="date">单次定时</option>
+                                          <option value="cron">循环定时</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">任务状态</label>
+                                    <div class="layui-input-inline">
+                                        <select name="taskStatus" id="task-status" lay-filter="task-status" lay-search>
+                                          <option value="">请选择任务状态</option>
+                                          <option value="await">等待触发</option>
+                                          <option value="executed">已经触发</option>
+                                          <option value="missed">错过触发</option>
+                                          <option value="error">失败触发</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="layui-inline">
+                                    <button type="submit" class="layui-btn layui-btn-primary"  lay-submit lay-filter="data-search-btn"><i class="layui-icon"></i> 搜 索</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </fieldset>
+                <script type="text/html" id="toolbarDemo">
+                    <div class="layui-btn-container">
+                        <button class="layui-btn layui-btn-sm layui-btn-danger data-delete-btn" lay-event="remove"> 删除任务 </button>
+                    </div>
+                </script>
+                <table class="layui-hide" id="currentTableId" lay-filter="currentTableFilter"></table>
+            </div>
+        </div>
+    {% endblock %}
+
+    {% block extra_js %}
+        <script src="{% static 'layuimini/lib/layui-v2.6.3/layui.js' %}" charset="utf-8"></script>
+        <script src="{% static 'layuimini/js/lay-config.js' %}?v=1.0.4" charset="utf-8"></script>
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+        <script src="{% static 'other/axios-plus.js' %}"></script>
+    {% endblock %}
+
+    {% block script %}
+        <script>
+            layui.use(['form', 'table', 'util'], function () {
+                var $ = layui.jquery,
+                    form = layui.form,
+                    layer = layui.layer,
+                    table = layui.table;
+                table.render({
+                    elem: '#currentTableId',
+                    url: "history-list-api",
+                    toolbar: '#toolbarDemo',
+                    id: 'taskTables',
+                    request: {
+                        pageName: 'pageIndex',
+                        limitName: 'pageSize'
+
+                    },
+                    text: {
+                        none: '未查询到历史记录'
+                    },
+                    response: {
+                        statusName: 'code',
+                        statusCode: 200,
+                        msgName: 'message',
+                        countName: 'DataCount',
+                        dataName: 'data'
+                    },
+                    cols: [[
+                        {type: "checkbox", width: 50},
+                        {field: 'taskId', minwidth: 150, title: '任务ID'},
+                        {field: 'runTime', minwidth: 100, title: '运行时间'},
+                        {field: 'jobName', minwidth: 100, title: '任务名称'},
+                        {field: 'jobType', minwidth: 100, title: '任务类型'},
+                        {field: 'jobStatus', minwidth: 100, title: '任务状态'},
+                        {field: 'finished', minwidth: 100, title: '是否运行'},
+                        {field: 'duration', minwidth: 100, title: '运行耗时(秒)'},
+                        {field: 'jobParameter', minwidth: 100, title: '任务参数'},
+                        {field: 'exception', minwidth: 100, title: '错误信息', style: 'color:red;'},
+                    ]],
+                    limits: [10, 15, 20, 25, 50, 100],
+                    limit: 10,
+                    page: true
+                });
+
+                form.on('submit(data-search-btn)', function (data) {
+                    table.reload('taskTables', {
+                        url: 'history-list-api',
+                        method:'get',
+                        page: {curr: 1}
+                        , where: data.field
+                    }, 'data');
+                    return false;
+                });
+
+                function handleTableAction(actionType, apiEndpoint, confirmMessage) {
+                    var checkStatus = table.checkStatus('taskTables');
+                    if (checkStatus.data.length == 0) {
+                        layer.msg('请选中数据再执行' + confirmMessage, { time: 10000, btn: ['明白了'] });
+                    } else {
+                        layer.confirm('确定要' + confirmMessage + '吗 ?', { icon: 3, title: '危险操作' }, function (index) {
+                            const data = { 'data': JSON.stringify(checkStatus.data) };
+                            axiosPost(apiEndpoint, data)
+                                .then(recv => {
+                                    if (recv.code === 200) {
+                                        layer.msg(recv.message, { icon: 6 });
+                                    } else {
+                                        layer.msg(recv.message, { icon: 5 });
+                                    }
+                                })
+                                .catch(error => {
+                                    layer.msg(error.message, { icon: 5 });
+                                })
+                                .finally(() => {
+                                    setTimeout(() => {
+                                        window.location.reload();
+                                    }, 1000);
+                                });
+                            layer.close(index);
+                        });
+                    }
+                }
+
+                table.on('toolbar(currentTableFilter)', function (obj) {
+                    switch (obj.event) {
+                        case 'remove':
+                            handleTableAction('remove', 'task/history-list-delete', '删除任务');
+                            break;
+                        default:
+                            break;
+                    }
+                });
+
+            });
+        </script>
+    {% endblock %}
+</body>
+</html>

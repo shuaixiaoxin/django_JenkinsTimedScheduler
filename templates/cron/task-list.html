@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    {% extends "base.html" %}
+    {% load static %}
+    <meta charset="utf-8">
+    <title>任务列表</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+</head>
+<body>
+    {% block content %}
+        <div class="layuimini-container">
+            <div class="layuimini-main">
+                <script type="text/html" id="toolbarDemo">
+                    <div class="layui-btn-container">
+                        <button class="layui-btn layui-btn-sm layui-btn-warm data-delete-btn" lay-event="pause"> 暂停任务 </button>
+                        <button class="layui-btn layui-btn-sm layui-btn-normal data-delete-btn" lay-event="resume"> 恢复任务 </button>
+                        <button class="layui-btn layui-btn-sm layui-btn-danger data-delete-btn" lay-event="remove"> 删除任务 </button>
+                    </div>
+                </script>
+                <table class="layui-hide" id="currentTableId" lay-filter="currentTableFilter"></table>
+            </div>
+        </div>
+    {% endblock %}
+
+    {% block extra_js %}
+        <script src="{% static 'layuimini/lib/layui-v2.6.3/layui.js' %}" charset="utf-8"></script>
+        <script src="{% static 'layuimini/js/lay-config.js' %}?v=1.0.4" charset="utf-8"></script>
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+        <script src="{% static 'other/axios-plus.js' %}"></script>
+    {% endblock %}
+
+    {% block script %}
+        <script>
+            layui.use(['form', 'table', 'util'], function () {
+                var $ = layui.jquery,
+                    form = layui.form,
+                    layer = layui.layer,
+                    util = layui.util,
+                    table = layui.table;
+                table.render({
+                    elem: '#currentTableId',
+                    url: "task-list-api",
+                    toolbar: '#toolbarDemo',
+                    id: 'taskTables',
+                    text: {
+                        none: '系统中，暂时没有计划任务在运行'
+                    },
+                    response: {
+                        statusName: 'code',
+                        statusCode: 200,
+                        msgName: 'message',
+                        dataName: 'data'
+                    },
+                    cols: [[
+                        {type: "radio", width: 50},
+                        {field: 'taskId', minwidth: 200, title: '任务ID'},
+                        {field: 'next_run_time', minwidth: 100, title: '运行时间'},
+                        {field: 'jobName', minwidth: 100, title: '任务名称'},
+                        {field: 'jobType', minwidth: 100, title: '任务类型'},
+                        {field: 'jobStatus', minwidth: 100, title: '任务状态'},
+                        {field: 'jobParameter', minwidth: 100, title: '任务参数'},
+                        {field: 'countDown', minwidth: 150, title: '运行倒计时', style: 'color:blue;'},
+                    ]],
+
+                    done: function(res, curr, count){
+                        for (var i = 0; i < res.data.length; i++) {
+                        (function (index) {
+                          var rowData = res.data[index];
+                          var endTime = new Date(rowData.countDown).getTime();
+                          var serverTime = new Date().getTime();
+                          // 为每一行初始化倒计时
+                          util.countdown(endTime, serverTime, function (date, serverTime, timer) {
+                            var str = date[0] + '天' + date[1] + '时' + date[2] + '分' + date[3] + '秒';
+                            // 获取对应的行索引
+                            var rowIndex = index;
+                            // 更新数据表格中的倒计时列
+                            layui.$('#currentTableId').next().find('tr[data-index="' + rowIndex + '"] td[data-field="countDown"]').text(str);
+                          });
+                        })(i);
+                      }
+                    }
+                });
+
+                function handleTableAction(actionType, apiEndpoint, confirmMessage) {
+                    var checkStatus = table.checkStatus('taskTables');
+                    if (checkStatus.data.length == 0) {
+                        layer.msg('请选中数据再执行' + confirmMessage, { time: 10000, btn: ['明白了'] });
+                    } else {
+                        layer.confirm('确定要' + confirmMessage + '吗 ?', { icon: 3, title: '危险操作' }, function (index) {
+                            const data = { 'data': JSON.stringify(checkStatus.data) };
+                            axiosPost(apiEndpoint, data)
+                                .then(recv => {
+                                    if (recv.code === 200) {
+                                        layer.msg(recv.message, { icon: 6 });
+                                    } else {
+                                        layer.msg(recv.message, { icon: 5 });
+                                    }
+                                })
+                                .catch(error => {
+                                    layer.msg(error.message, { icon: 5 });
+                                })
+                                .finally(() => {
+                                    setTimeout(() => {
+                                        window.location.reload();
+                                    }, 1000);
+                                });
+                            layer.close(index);
+                        });
+                    }
+                }
+
+                table.on('toolbar(currentTableFilter)', function (obj) {
+                    switch (obj.event) {
+                        case 'pause':
+                            handleTableAction('pause', 'task/task-pause-api', '暂停任务');
+                            break;
+                        case 'resume':
+                            handleTableAction('resume', 'task/task-resume-api', '恢复任务');
+                            break;
+                        case 'remove':
+                            handleTableAction('remove', 'task/task-remove-api', '删除任务');
+                            break;
+                        default:
+                            break;
+                    }
+                });
+
+            });
+        </script>
+    {% endblock %}
+</body>
+</html>

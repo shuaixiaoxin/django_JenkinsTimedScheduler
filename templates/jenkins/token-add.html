@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    {% extends "base.html" %}
+    {% load static %}
+    <meta charset="utf-8">
+    {% block style %}
+        <style>
+        /* 自定义样式 */
+            body {
+                background-color: #ffffff;
+            }
+          .custom-input:focus {
+            border-color: green;
+            box-shadow: 0 0 3px green;
+          }
+        </style>
+    {% endblock %}
+</head>
+<body>
+    {% block content %}
+        <div class="layui-form">
+
+            <div class="layui-form-item">
+                <label class="layui-form-label required">用户名称</label>
+                <div class="layui-input-block">
+                    <input type="text" disabled name="username" autocomplete="off" value="{{ request.user.username }}" class="layui-input">
+                </div>
+            </div>
+
+            <div class="layui-form-item">
+                <label class="layui-form-label required">Token值</label>
+                <div class="layui-input-block">
+                    <input type="text" name="token" lay-verify="required" lay-reqtext="Token不能为空" autocomplete="off" placeholder="请输入Token值" value="" class="layui-input custom-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-input-block">
+                    <button class="layui-btn layui-btn-normal" lay-submit lay-filter="saveBtn">确认保存</button>
+                </div>
+            </div>
+        </div>
+    {% endblock %}
+
+    {% block script %}
+        <script>
+            layui.use('form', function(){
+              var form = layui.form;
+              form.on('submit(saveBtn)', function(data){
+                  axiosPost('jenkins/jenkins-token-add-api', data.field)
+                  .then(data => {
+                    if (data.code === 200) {
+                        parent.layui.table.reload('tokenTable');
+                           layer.confirm('添加成功',{btn: ['返回Token页']}, function(index){
+                               var index2 = parent.layer.getFrameIndex(window.name);
+                                parent.layer.close(index2);
+                            })
+                    } else {
+                        layer.msg(data.message, {icon: 5});
+                    }
+                  })
+                  .catch(error => {
+                    console.error(error);
+                  });
+              });
+            });
+        </script>
+    {% endblock %}
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    {% extends "base.html" %}
+    {% load static %}
+    <meta charset="utf-8">
+    <title>循环定时</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+</head>
+<body>
+    {% block content %}
+        <div class="layuimini-container">
+            <div class="layuimini-main">
+               <fieldset class="table-search-fieldset">
+                    <legend>循环定时</legend>
+                    <div style="margin: 10px 10px 10px 10px">
+                        <form class="layui-form layui-form-pane" action="">
+                            <div class="layui-form-item">
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">项目视图</label>
+                                    <div class="layui-input-inline">
+                                        <select name="view" id="view-group" lay-filter="view-group" required lay-verify="required" lay-reqtext="请至少选择一个视图分组" lay-search>
+                                          <option value="">请选择视图分组</option>
+                                          <option value="all">所有视图</option>
+                                          {% for k,v in data.items %}
+                                          <option value="{{ v }}">{{ k }}</option>
+                                          {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">任务选择</label>
+                                    <div class="layui-input-inline">
+                                        <select name="task" id="task" lay-filter="task"  required lay-verify="required" lay-reqtext="请至少选择一个任务" lay-search>
+                                          <option value="">请选择任务</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
+                                    <label class="layui-form-label">执行时间</label>
+                                    <div class="layui-input-inline">
+                                        <input type="text" id="executionTime" name="executionTime" required lay-verify="required" lay-reqtext="计划任务时间不能为空" autocomplete="off" class="layui-input form-control">
+                                    </div>
+                                </div>
+                                <div class="layui-inline">
+                                    <button type="submit" class="layui-btn layui-btn-primary"  lay-submit lay-filter="Timed-execution"><i class="layui-icon"></i> 定时执行</button>
+                                </div>
+
+                            </div>
+                        </form>
+                    </div>
+                </fieldset>
+            </div>
+        </div>
+    {% endblock %}
+
+    {% block script %}
+        <script>
+        layui
+				.config({
+					base: "{% static  'layui_exts/' %}"
+				})
+				.extend({
+					cron: "cron/cron",
+				})
+				.use(["cron"], function() {
+					var $ = layui.$,
+						cron = layui.cron;
+					cron.render({
+						elem: "#executionTime",
+					});
+				});
+        layui.use(['form'], function(){
+          var $ = layui.$,
+              form = layui.form;
+
+            form.on('select(view-group)', function (data) {
+              const inputValue = data.value;
+              axiosPost('cron/view-group-api', {"viewGroup": inputValue})
+                  .then(data => {
+                    if (data.code === 200) {
+                        $("#task").empty();
+                        $("#task").append($('<option value="">请选择任务</option>'));
+                        data.data.forEach(option => {
+                            const optionElement = new Option(option.label, option.value);
+                            $('#task').append(optionElement);
+                        });
+                        form.render('select');
+                    } else {
+                        layer.msg(data.message, {icon: 5});
+                    }
+                  })
+                  .catch(error => {
+                    console.error(error);
+                  });
+            });
+
+            form.on('submit(Timed-execution)', function (event) {
+                axiosPost('cron/Cycle-Timed-execution', event.field)
+                    .then(data => {
+                        if (data.code === 200) {
+                            layer.alert(data.message, {
+                              time: 60*1000
+                              ,success: function(layero, index){
+                                var timeNum = this.time/1000, setText = function(start){
+                                  layer.title((start ? timeNum : --timeNum) + ' 秒后关闭', index);
+                                };
+                                setText(!0);
+                                this.timer = setInterval(setText, 1000);
+                                if(timeNum <= 0) clearInterval(this.timer);
+                              }
+                              ,end: function(){
+                                clearInterval(this.timer);
+                              }
+                            });
+                            document.getElementById('executionTime').value = '';
+                        } else {
+                            layer.msg(data.message, {icon: 5});
+                        }
+                      })
+                      .catch(error => {
+                        console.error(error);
+                      });
+                return false
+            });
+        });
+        </script>
+    {% endblock %}
+</body>
+</html>
